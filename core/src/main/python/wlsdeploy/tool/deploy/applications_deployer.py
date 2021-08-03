@@ -245,8 +245,8 @@ class ApplicationsDeployer(Deployer):
         self.__build_app_deploy_strategy(app_location, model_applications, existing_app_refs,
                                          stop_and_undeploy_app_list)
 
-        # deployed_app_list is list of apps that has been deployed and stareted again
-        # redeploy_app_list is list of apps that needs to be redeplyed
+        # deployed_app_list is list of apps that has been deployed and started again
+        # redeploy_app_list is list of apps that needs to be redeployed
         deployed_app_list = []
         redeploy_app_list = []
 
@@ -492,9 +492,9 @@ class ApplicationsDeployer(Deployer):
                         ref_attrs = self.wlst_helper.lsa(app_ref)
                         app_type = ref_attrs['Type']
                         app_id = None
-                        if app_type == 'ApplicationRuntime':
+                        if app_type == 'ApplicationRuntime' and 'ApplicationName' in ref_attrs:
                             app_id = ref_attrs['ApplicationName']
-                        if app_type == 'WebAppComponentRuntime':
+                        if app_type == 'WebAppComponentRuntime' and 'ApplicationIdentifier' in ref_attrs:
                             app_id = ref_attrs['ApplicationIdentifier']
 
                         _update_ref_dictionary(existing_libraries, lib, absolute_source_path, lib_hash, config_targets,
@@ -667,28 +667,35 @@ class ApplicationsDeployer(Deployer):
                     existing_plan_hash = self.__get_file_hash(plan_path)
                     if model_src_hash == existing_src_hash:
                         if model_plan_hash == existing_plan_hash:
-                            # If model hashes match existing hashes, the application did not change.
-                            # Unless targets were added, there's no need to redeploy.
-                            model_targets = dictionary_utils.get_element(app_dict, TARGET)
-                            model_targets_list = alias_utils.create_list(model_targets, 'WLSDPLY-08000')
-                            model_targets_set = Set(model_targets_list)
+                            if not (os.path.isabs(src_path) and os.path.isabs(model_src_path) and
+                                    FileUtils.getCanonicalPath(src_path) == FileUtils.getCanonicalPath(model_src_path)):
+                                # If model hashes match existing hashes, the application did not change.
+                                # Unless targets were added, there's no need to redeploy.
+                                # If it is an absolute path, there is nothing to compare so assume redeploy
+                                model_targets = dictionary_utils.get_element(app_dict, TARGET)
+                                model_targets_list = alias_utils.create_list(model_targets, 'WLSDPLY-08000')
+                                model_targets_set = Set(model_targets_list)
 
-                            existing_app_targets = dictionary_utils.get_element(existing_app_ref, 'target')
-                            existing_app_targets_set = Set(existing_app_targets)
+                                existing_app_targets = dictionary_utils.get_element(existing_app_ref, 'target')
+                                existing_app_targets_set = Set(existing_app_targets)
 
-                            if existing_app_targets_set.issuperset(model_targets_set):
-                                self.__remove_app_from_deployment(model_apps, app)
+                                if existing_app_targets_set.issuperset(model_targets_set):
+                                    self.__remove_app_from_deployment(model_apps, app)
+                                else:
+                                    # Adjust the targets to only the new targets so that existing apps on
+                                    # already targeted servers are not impacted.
+                                    adjusted_set = model_targets_set.difference(existing_app_targets_set)
+                                    adjusted_targets = ','.join(adjusted_set)
+                                    app_dict['Target'] = adjusted_targets
+
+                                    # For update case, the sparse model may be just changing targets, therefore without sourcepath
+
+                                    if app_dict['SourcePath'] is None and src_path is not None:
+                                        app_dict['SourcePath'] = src_path
                             else:
-                                # Adjust the targets to only the new targets so that existing apps on
-                                # already targeted servers are not impacted.
-                                adjusted_set = model_targets_set.difference(existing_app_targets_set)
-                                adjusted_targets = ','.join(adjusted_set)
-                                app_dict['Target'] = adjusted_targets
-
-                                # For update case, the sparse model may be just changing targets, therefore without sourcepath
-
-                                if app_dict['SourcePath'] is None and src_path is not None:
-                                    app_dict['SourcePath'] = src_path
+                                self.logger.info('WLSDPLY-09336', src_path,
+                                                 class_name=self._class_name, method_name=_method_name)
+                                stop_and_undeploy_app_list.append(versioned_name)
                         else:
                             # updated deployment plan
                             stop_and_undeploy_app_list.append(versioned_name)
@@ -896,6 +903,7 @@ class ApplicationsDeployer(Deployer):
                     src_path = dictionary_utils.get_element(lib_dict, SOURCE_PATH)
                     plan_file = dictionary_utils.get_element(lib_dict, PLAN_PATH)
                     targets = dictionary_utils.get_element(lib_dict, TARGET)
+                    stage_mode = dictionary_utils.get_element(lib_dict, STAGE_MODE)
                     options = _get_deploy_options(model_libs, lib_name, library_module='true')
                     for uses_path_tokens_attribute_name in uses_path_tokens_attribute_names:
                         if uses_path_tokens_attribute_name in lib_dict:
@@ -906,7 +914,7 @@ class ApplicationsDeployer(Deployer):
                     location.add_name_token(token_name, lib_name)
                     resource_group_template_name, resource_group_name, partition_name = \
                         self.__get_mt_names_from_location(location)
-                    self.__deploy_app_online(lib_name, src_path, targets, plan=plan_file,
+                    self.__deploy_app_online(lib_name, src_path, targets, plan=plan_file, stage_mode=stage_mode,
                                              partition=partition_name, resource_group=resource_group_name,
                                              resource_group_template=resource_group_template_name, options=options)
                     location.remove_name_token(token_name)
@@ -923,6 +931,7 @@ class ApplicationsDeployer(Deployer):
                     app_dict = model_apps[app_name]
                     src_path = dictionary_utils.get_element(app_dict, SOURCE_PATH)
                     plan_file = dictionary_utils.get_element(app_dict, PLAN_PATH)
+                    stage_mode = dictionary_utils.get_element(app_dict, STAGE_MODE)
                     targets = dictionary_utils.get_element(app_dict, TARGET)
                     options = _get_deploy_options(model_apps, app_name, library_module='false')
 
@@ -938,7 +947,8 @@ class ApplicationsDeployer(Deployer):
                         self.__get_mt_names_from_location(location)
 
                     new_app_name = self.__deploy_app_online(app_name, src_path, targets, plan=plan_file,
-                                                            partition=partition_name, resource_group=resource_group_name,
+                                                            stage_mode=stage_mode, partition=partition_name,
+                                                            resource_group=resource_group_name,
                                                             resource_group_template=resource_group_template_name,
                                                             options=options)
                     location.remove_name_token(token_name)
@@ -966,7 +976,7 @@ class ApplicationsDeployer(Deployer):
         dummy_location.pop_location()
         return resource_group_template_name, resource_group_name, partition_name
 
-    def __deploy_app_online(self, application_name, source_path, targets, plan=None, partition=None,
+    def __deploy_app_online(self, application_name, source_path, targets, stage_mode=None, plan=None, partition=None,
                             resource_group=None, resource_group_template=None, options=None):
         """
         Deploy an application or shared library in online mode.
@@ -1032,6 +1042,8 @@ class ApplicationsDeployer(Deployer):
             kwargs['resourceGroupTemplate'] = str(resource_group_template)
         if partition is not None:
             kwargs['partition'] = str(partition)
+        if stage_mode is not None:
+            kwargs['stageMode'] = str(stage_mode)
         if options is not None:
             for key, value in options.iteritems():
                 kwargs[key] = value
