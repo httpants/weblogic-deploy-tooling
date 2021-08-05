@@ -519,7 +519,7 @@ class ApplicationsDeployer(Deployer):
 
                         # Add the app_type to the referenced app
                         _update_ref_dictionary(existing_libraries, lib, absolute_source_path, lib_hash, config_targets,
-                                               deploy_order=deployment_order, app_name=app_id, ref_type=app_type)
+                                               deploy_order=deployment_order, app_name=app_id, ref_app_type=app_type)
                 else:
                     _update_ref_dictionary(existing_libraries, lib, absolute_source_path, lib_hash, config_targets)
         return existing_libraries
@@ -1227,7 +1227,7 @@ def _add_ref_apps_to_stoplist(stop_applist, lib_refs, lib_name):
     return
 
 def _update_ref_dictionary(ref_dictionary, lib_name, absolute_sourcepath, lib_hash, configured_targets,
-                           absolute_plan_path=None, plan_hash=None, app_name=None, deploy_order=None, ref_type=None,
+                           absolute_plan_path=None, plan_hash=None, app_name=None, deploy_order=None, ref_app_type=None,
                            staging_mode=None, deploy_options=None):
     """
     Update the reference dictionary for the apps/libraries
@@ -1261,5 +1261,5 @@ def _update_ref_dictionary(ref_dictionary, lib_name, absolute_sourcepath, lib_ha
         if referencing_app.has_key(app_name) is False:
             referencing_app[app_name] = OrderedDict()
         referencing_app[app_name][DEPLOYMENT_ORDER] = deploy_order
-        referencing_app[app_name]['type'] = ref_type
+        referencing_app[app_name]['type'] = ref_app_type
     return
