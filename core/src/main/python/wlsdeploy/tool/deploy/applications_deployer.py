@@ -284,7 +284,7 @@ class ApplicationsDeployer(Deployer):
             app_details = existing_app_refs[app]
             self.__deploy_app_online(application_name = app, source_path=app_details['sourcePath'],
                                      targets=','.join(app_details['target']), plan=app_details['planPath'],
-                                     stage_mode=app_details['stagingMode'])
+                                     stage_mode=app_details['stagingMode'], options=app_details['options'])
 
         self.__start_all_apps(deployed_app_list, base_location)
         self.logger.exiting(class_name=self._class_name, method_name=_method_name)
@@ -441,11 +441,16 @@ class ApplicationsDeployer(Deployer):
                 else:
                     plan_hash = None
 
-                #TODO: we need to keep track of other attributes too.  How ?
+                #we need to keep track of other attributes as options too.  Are we cover all?
+                # code copy from get_deploy_options()
+
+                deploy_options = OrderedDict()
+                for option in [DEPLOYMENT_ORDER, SECURITY_DD_MODEL, PLAN_STAGE_MODE]:
+                    deploy_options[option] = attributes_map[option]
 
                 _update_ref_dictionary(ref_dictionary, app, absolute_sourcepath, app_hash, config_targets,
                                        absolute_plan_path=absolute_planpath, deploy_order=deployment_order,
-                                       plan_hash=plan_hash, staging_mode=staging_mode)
+                                       plan_hash=plan_hash, staging_mode=staging_mode, deploy_options=deploy_options)
         return ref_dictionary
 
     def __get_library_references(self, base_location):
@@ -1171,7 +1176,7 @@ def _get_deploy_options(model_apps, app_name, library_module):
     """
     deploy_options = OrderedDict()
     # not sure about altDD, altWlsDD
-    for option in [DEPLOYMENT_ORDER, SECURITY_DD_MODEL, PLAN_STAGE_MODE, STAGE_MODE]:
+    for option in [DEPLOYMENT_ORDER, SECURITY_DD_MODEL, PLAN_STAGE_MODE]:
         app = dictionary_utils.get_dictionary_element(model_apps, app_name)
         value = dictionary_utils.get_element(app, option)
 
@@ -1182,8 +1187,6 @@ def _get_deploy_options(model_apps, app_name, library_module):
             option_name = 'securityModel'
         elif option == PLAN_STAGE_MODE:
             option_name = 'planStageMode'
-        elif option == STAGE_MODE:
-            option_name = 'stageMode'
 
         if value is not None:
             deploy_options[option_name] = str(value)
@@ -1225,7 +1228,7 @@ def _add_ref_apps_to_stoplist(stop_applist, lib_refs, lib_name):
 
 def _update_ref_dictionary(ref_dictionary, lib_name, absolute_sourcepath, lib_hash, configured_targets,
                            absolute_plan_path=None, plan_hash=None, app_name=None, deploy_order=None, ref_type=None,
-                           staging_mode=None):
+                           staging_mode=None, deploy_options=None):
     """
     Update the reference dictionary for the apps/libraries
     :param ref_dictionary: the reference dictionary to update
@@ -1237,6 +1240,8 @@ def _update_ref_dictionary(ref_dictionary, lib_name, absolute_sourcepath, lib_ha
     :param plan_hash: the plan hash
     :param app_name: the app name
     :param deploy_order: the deploy order
+    :param staging_mode: staging mode
+    :param deploy_options: deploy options
     """
     if ref_dictionary.has_key(lib_name) is False:
         ref_dictionary[lib_name] = OrderedDict()
@@ -1246,6 +1251,7 @@ def _update_ref_dictionary(ref_dictionary, lib_name, absolute_sourcepath, lib_ha
         ref_dictionary[lib_name]['planHash'] = plan_hash
         ref_dictionary[lib_name]['target'] = configured_targets
         ref_dictionary[lib_name]['stagingMode'] = staging_mode
+        ref_dictionary[lib_name]['options'] = deploy_options
 
     if app_name is not None:
         lib = ref_dictionary[lib_name]
