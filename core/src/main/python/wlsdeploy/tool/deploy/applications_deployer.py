@@ -283,7 +283,8 @@ class ApplicationsDeployer(Deployer):
         for app in undeployed_ears_need_deployagain:
             app_details = existing_app_refs[app]
             self.__deploy_app_online(application_name = app, source_path=app_details['sourcePath'],
-                                     targets=','.join(app_details['target']), plan=app_details['planPath'])
+                                     targets=','.join(app_details['target']), plan=app_details['planPath'],
+                                     stage_mode=app_details['stagingMode'])
 
         self.__start_all_apps(deployed_app_list, base_location)
         self.logger.exiting(class_name=self._class_name, method_name=_method_name)
@@ -399,7 +400,6 @@ class ApplicationsDeployer(Deployer):
         self.wlst_helper.server_config()
         self.wlst_helper.cd(wlst_list_path)
         apps = self.wlst_helper.get_existing_object_list(wlst_list_path)
-
         self.wlst_helper.domain_runtime()
         #
         # Cannot use ApplicationRuntime since it includes datasources as ApplicationRuntimes
@@ -433,6 +433,7 @@ class ApplicationsDeployer(Deployer):
                     absolute_sourcepath = self.model_context.get_domain_home() + '/' + absolute_sourcepath
 
                 deployment_order = attributes_map['DeploymentOrder']
+                staging_mode = attributes_map['StagingMode']
 
                 app_hash = self.__get_file_hash(absolute_sourcepath)
                 if absolute_planpath is not None:
@@ -440,9 +441,11 @@ class ApplicationsDeployer(Deployer):
                 else:
                     plan_hash = None
 
+                #TODO: we need to keep track of other attributes too.  How ?
+
                 _update_ref_dictionary(ref_dictionary, app, absolute_sourcepath, app_hash, config_targets,
                                        absolute_plan_path=absolute_planpath, deploy_order=deployment_order,
-                                       plan_hash=plan_hash)
+                                       plan_hash=plan_hash, staging_mode=staging_mode)
         return ref_dictionary
 
     def __get_library_references(self, base_location):
@@ -1221,7 +1224,8 @@ def _add_ref_apps_to_stoplist(stop_applist, lib_refs, lib_name):
     return
 
 def _update_ref_dictionary(ref_dictionary, lib_name, absolute_sourcepath, lib_hash, configured_targets,
-                           absolute_plan_path=None, plan_hash=None, app_name=None, deploy_order=None, ref_type=None):
+                           absolute_plan_path=None, plan_hash=None, app_name=None, deploy_order=None, ref_type=None,
+                           staging_mode=None):
     """
     Update the reference dictionary for the apps/libraries
     :param ref_dictionary: the reference dictionary to update
@@ -1241,7 +1245,7 @@ def _update_ref_dictionary(ref_dictionary, lib_name, absolute_sourcepath, lib_ha
         ref_dictionary[lib_name]['planPath'] = absolute_plan_path
         ref_dictionary[lib_name]['planHash'] = plan_hash
         ref_dictionary[lib_name]['target'] = configured_targets
-
+        ref_dictionary[lib_name]['stagingMode'] = staging_mode
 
     if app_name is not None:
         lib = ref_dictionary[lib_name]
