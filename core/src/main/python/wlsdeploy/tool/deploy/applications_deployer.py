@@ -262,9 +262,16 @@ class ApplicationsDeployer(Deployer):
         for app in stop_and_undeploy_app_list:
             self.__stop_app(app)
             self.__undeploy_app(app)
-
         # library is updated, it must be undeployed first
+        undeployed_ears_need_deployagain = []
         for lib in update_library_list:
+            # if any referencing app is an ear then they must be undeployed to get rid of the references by
+            # the shared lib runtime, stopping alone is not enough
+            for key in existing_lib_refs[lib]['referencingApp'].keys():
+                if existing_lib_refs[lib]['referencingApp'][key]['type'] == 'ApplicationRuntime':
+                    self.__undeploy_app(key)
+                    redeploy_app_list.remove(key)
+                    undeployed_ears_need_deployagain.append(key)
             self.__undeploy_app(lib, library_module='true')
 
         self.__deploy_model_libraries(model_shared_libraries, lib_location)
@@ -272,6 +279,11 @@ class ApplicationsDeployer(Deployer):
 
         for app in redeploy_app_list:
             self.__redeploy_app(app)
+
+        for app in undeployed_ears_need_deployagain:
+            app_details = existing_app_refs[app]
+            self.__deploy_app_online(application_name = app, source_path=app_details['sourcePath'],
+                                     targets=','.join(app_details['target']), plan=app_details['planPath'])
 
         self.__start_all_apps(deployed_app_list, base_location)
         self.logger.exiting(class_name=self._class_name, method_name=_method_name)
@@ -497,8 +509,9 @@ class ApplicationsDeployer(Deployer):
                         if app_type == 'WebAppComponentRuntime' and 'ApplicationIdentifier' in ref_attrs:
                             app_id = ref_attrs['ApplicationIdentifier']
 
+                        # Add the app_type to the referenced app
                         _update_ref_dictionary(existing_libraries, lib, absolute_source_path, lib_hash, config_targets,
-                                               deploy_order=deployment_order, app_name=app_id)
+                                               deploy_order=deployment_order, app_name=app_id, ref_type=app_type)
                 else:
                     _update_ref_dictionary(existing_libraries, lib, absolute_source_path, lib_hash, config_targets)
         return existing_libraries
@@ -1208,7 +1221,7 @@ def _add_ref_apps_to_stoplist(stop_applist, lib_refs, lib_name):
     return
 
 def _update_ref_dictionary(ref_dictionary, lib_name, absolute_sourcepath, lib_hash, configured_targets,
-                           absolute_plan_path=None, plan_hash=None, app_name=None, deploy_order=None):
+                           absolute_plan_path=None, plan_hash=None, app_name=None, deploy_order=None, ref_type=None):
     """
     Update the reference dictionary for the apps/libraries
     :param ref_dictionary: the reference dictionary to update
@@ -1229,6 +1242,7 @@ def _update_ref_dictionary(ref_dictionary, lib_name, absolute_sourcepath, lib_ha
         ref_dictionary[lib_name]['planHash'] = plan_hash
         ref_dictionary[lib_name]['target'] = configured_targets
 
+
     if app_name is not None:
         lib = ref_dictionary[lib_name]
         if lib.has_key('referencingApp') is False:
@@ -1237,4 +1251,5 @@ def _update_ref_dictionary(ref_dictionary, lib_name, absolute_sourcepath, lib_ha
         if referencing_app.has_key(app_name) is False:
             referencing_app[app_name] = OrderedDict()
         referencing_app[app_name][DEPLOYMENT_ORDER] = deploy_order
+        referencing_app[app_name]['type'] = ref_type
     return
