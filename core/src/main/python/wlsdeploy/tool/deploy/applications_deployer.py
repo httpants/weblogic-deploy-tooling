@@ -446,7 +446,8 @@ class ApplicationsDeployer(Deployer):
 
                 deploy_options = OrderedDict()
                 for option in [DEPLOYMENT_ORDER, SECURITY_DD_MODEL, PLAN_STAGE_MODE]:
-                    deploy_options[option] = attributes_map[option]
+                    if deploy_options.has_key(option):
+                        deploy_options[option] = attributes_map[option]
 
                 _update_ref_dictionary(ref_dictionary, app, absolute_sourcepath, app_hash, config_targets,
                                        absolute_plan_path=absolute_planpath, deploy_order=deployment_order,
