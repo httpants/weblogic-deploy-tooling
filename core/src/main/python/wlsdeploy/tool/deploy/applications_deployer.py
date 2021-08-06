@@ -254,6 +254,7 @@ class ApplicationsDeployer(Deployer):
         for app in stop_app_list:
             self.__stop_app(app)
             # add the referenced app to the redeploy list
+            self.__undeploy_app(app)
             redeploy_app_list.append(app)
             # add the referenced app to the start list
             deployed_app_list.append(app)
@@ -262,25 +263,16 @@ class ApplicationsDeployer(Deployer):
         for app in stop_and_undeploy_app_list:
             self.__stop_app(app)
             self.__undeploy_app(app)
+
         # library is updated, it must be undeployed first
-        undeployed_ears_need_deployagain = []
+
         for lib in update_library_list:
-            # if any referencing app is an ear then they must be undeployed to get rid of the references by
-            # the shared lib runtime, stopping alone is not enough
-            for key in existing_lib_refs[lib]['referencingApp'].keys():
-                if existing_lib_refs[lib]['referencingApp'][key]['type'] == 'ApplicationRuntime':
-                    self.__undeploy_app(key)
-                    redeploy_app_list.remove(key)
-                    undeployed_ears_need_deployagain.append(key)
             self.__undeploy_app(lib, library_module='true')
 
         self.__deploy_model_libraries(model_shared_libraries, lib_location)
         self.__deploy_model_applications(model_applications, app_location, deployed_app_list)
 
         for app in redeploy_app_list:
-            self.__redeploy_app(app)
-
-        for app in undeployed_ears_need_deployagain:
             app_details = existing_app_refs[app]
             self.__deploy_app_online(application_name = app, source_path=app_details['sourcePath'],
                                      targets=','.join(app_details['target']), plan=app_details['planPath'],
@@ -1262,5 +1254,5 @@ def _update_ref_dictionary(ref_dictionary, lib_name, absolute_sourcepath, lib_ha
         if referencing_app.has_key(app_name) is False:
             referencing_app[app_name] = OrderedDict()
         referencing_app[app_name][DEPLOYMENT_ORDER] = deploy_order
-        referencing_app[app_name]['type'] = ref_app_type
+        referencing_app[app_name]['ref_type'] = ref_app_type
     return
