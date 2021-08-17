@@ -46,6 +46,10 @@ The directory where the model is optionally located. Only one model file, either
 
 The directory where a wallet can be stored for use with Oracle Platform Security Services. The file resource name is not specified in the model, and is assumed to be a single ZIP file in the archive at this location.  
 
+#### `wlsdeploy/custom`
+
+The directory where a user can store files. The files will be extracted into wlsdeploy/custom in the domain.
+
 #### `wlsdeploy/applications`
 The root directory under which applications are stored. Applications can be stored in the archive as EAR or WAR files, or expanded under this folder.
 
