@@ -69,7 +69,7 @@ There are a select number of items that can be discovered when running discover 
 
 - Global Roles             Global Roles whose expression has changed or new global roles added to the set will be discovered into the domainInfo section of the model.
 
-For additional information about global roles see 
+For additional information about global roles see [Modeling WebLogic users, groups, and roles]({{< relref "/samples/usergroups-model.md" >}}).
 ### Environmental variables
 The following environment variables may be set.
 
