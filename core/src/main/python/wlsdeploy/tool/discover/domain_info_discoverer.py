@@ -139,6 +139,10 @@ class DomainInfoDiscoverer(Discoverer):
         return model_constants.DOMAIN_SCRIPTS, entries
 
     def get_roles(self):
+        """
+        Discover online global role expressions that have changed or have been added.
+        :return: model folder name, dictionary for model
+        """
         _method_name = 'get_roles'
         _logger.entering(class_name=_class_name, method_name=_method_name)
         model = dict()
@@ -167,5 +171,6 @@ class DomainInfoDiscoverer(Discoverer):
                         # put it in the model
                         model[role_name] = dict()
                         model[role_name][model_constants.EXPRESSION] =  role_expression
+            _logger.exiting(class_name=_class_name, method_name=_method_name, result=model_folder)
             return model_folder, model
 
