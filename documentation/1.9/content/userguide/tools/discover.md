@@ -64,7 +64,12 @@ WARNING Messages:
 
 Total:       WARNING :     1    SEVERE :     0
 ```
+### Discover Online only MBeans
+There are a select number of items that can be discovered when running discover in online mode. There are certain WLST commands that can run in online only.
 
+- Global Roles             Global Roles whose expression has changed or new global roles added to the set will be discovered into the domainInfo section of the model.
+
+For additional information about global roles see 
 ### Environmental variables
 The following environment variables may be set.
 
