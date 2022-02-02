@@ -3,6 +3,8 @@ Copyright (c) 2017, 2019, Oracle Corporation and/or its affiliates.  All rights 
 Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 """
 from oracle.weblogic.deploy.util import CLAUtils
+from oracle.weblogic.deploy.exception import ExceptionHelper
+from getpass import getpass as sysgetpass
 
 
 def getuser(message_key, *args):
@@ -14,7 +16,10 @@ def getuser(message_key, *args):
     :return: the username as a Java String
     :raises IOException: if an IO error occurs prompting the user or reading their response
     """
-    return CLAUtils.getUserInput(message_key, list(args))
+    msg = ExceptionHelper.getMessage(message_key, list(args))
+    return raw_input(msg + ": \n")
+    
+    """ return CLAUtils.getUserInput(message_key, list(args)) """
 
 def getpass(message_key, *args):
     """
@@ -25,4 +30,6 @@ def getpass(message_key, *args):
     :return: the password as a Java char array
     :raises IOException: if an IO error occurs prompting the user or reading their response
     """
-    return CLAUtils.getPasswordInput(message_key, list(args))
+    msg = ExceptionHelper.getMessage(message_key, list(args))
+    return sysgetpass(msg + ": \n")
+    """return CLAUtils.getPasswordInput(message_key, list(args))"""

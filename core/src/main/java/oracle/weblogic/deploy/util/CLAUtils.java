@@ -71,7 +71,7 @@ public final class CLAUtils {
     }
 
     private static void promptInTerminalWindow(String messageKey, Object... args) {
-        System.out.print(ExceptionHelper.getMessage(messageKey, args) + PROMPT_ENDING);
+        System.out.println(ExceptionHelper.getMessage(messageKey, args) + PROMPT_ENDING);
     }
 
     private static char[] readPasswordFromStdin(InputStream stdinReader) throws IOException {
