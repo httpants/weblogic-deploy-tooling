@@ -194,7 +194,7 @@ class DomainCreator(Creator):
         :param type_name: the model folder type
         :param model_nodes: the model dictionary of the specified model folder type
         :param base_location: the base location object to use to create the MBeans
-        :param log_created: whether or not to log created at INFO level, by default it is logged at the FINE level
+        :param log_created: whether or not to log created at INFO level, by default it is logged at the info level
         :raises: CreateException: if an error occurs
         """
         self.topology_helper.check_coherence_cluster_references(type_name, model_nodes)
@@ -629,7 +629,7 @@ class DomainCreator(Creator):
         _method_name = '__apply_base_domain_config'
 
         self.logger.entering(topology_folder_list, class_name=self.__class_name, method_name=_method_name)
-        self.logger.fine('WLSDPLY-12219', class_name=self.__class_name, method_name=_method_name)
+        self.logger.info('WLSDPLY-12219', class_name=self.__class_name, method_name=_method_name)
 
         location = LocationContext()
         domain_name_token = self.aliases.get_name_token(location)
@@ -701,7 +701,7 @@ class DomainCreator(Creator):
 
     def __create_security_folder(self):
         """
-        Create the the security objects if any. The security information
+        Create the the security objects if any. The security infomation
         from the model will be writing to the DefaultAuthenticatorInit.ldift file
         :raises: CreateException: if an error occurs
         """
@@ -993,8 +993,8 @@ class DomainCreator(Creator):
         self.logger.entering(class_name=self.__class_name, method_name=_method_name)
 
         # only continue with RCU configuration for a JRF domain.
-        if not self._domain_typedef.is_jrf_domain_type():
-            self.logger.finer('WLSDPLY-12249', class_name=self.__class_name, method_name=_method_name)
+        if not self._domain_typedef.is_jrf_domain_type() and not self._domain_typedef.required_rcu():
+            self.logger.info('WLSDPLY-12249', class_name=self.__class_name, method_name=_method_name)
             return
 
         has_atp = 0
@@ -1094,25 +1094,29 @@ class DomainCreator(Creator):
 
             fmw_database = self.wls_helper.get_jdbc_url_from_rcu_connect_string(rcu_database)
 
-            self.logger.fine('WLSDPLY-12221', fmw_database, class_name=self.__class_name, method_name=_method_name)
+            self.logger.info('WLSDPLY-12221', fmw_database, class_name=self.__class_name, method_name=_method_name)
 
             svc_table_ds_name = self.wls_helper.get_jrf_service_table_datasource_name()
             location = deployer_utils.get_jdbc_driver_params_location(svc_table_ds_name, self.aliases)
             wlst_path = self.aliases.get_wlst_attributes_path(location)
+            print('cd(\'' + wlst_path +'\')')
             self.wlst_helper.cd(wlst_path)
 
             svc_table_driver_name = self.wls_helper.get_stb_data_source_jdbc_driver_name()
             wlst_name, wlst_value = \
                 self.aliases.get_wlst_attribute_name_and_value(location, DRIVER_NAME, svc_table_driver_name)
+            print('set(\'' + wlst_name +'\', \'' + wlst_value + '\')')
             self.wlst_helper.set_if_needed(wlst_name, wlst_value)
 
             wlst_name, wlst_value = \
                 self.aliases.get_wlst_attribute_name_and_value(location, URL, fmw_database)
+            print('set(\'' + wlst_name +'\', \'' + wlst_value + '\')')
             self.wlst_helper.set_if_needed(wlst_name, wlst_value)
 
             wlst_name, wlst_value = \
                 self.aliases.get_wlst_attribute_name_and_value(location, PASSWORD_ENCRYPTED,
                                                                rcu_schema_pwd, masked=True)
+            print('set(\'' + wlst_name +'\', \'' + wlst_value + '\')')
             self.wlst_helper.set_if_needed(wlst_name, wlst_value, masked=True)
 
             location.append_location(JDBC_DRIVER_PARAMS_PROPERTIES)
@@ -1123,15 +1127,18 @@ class DomainCreator(Creator):
                 location.add_name_token(token_name, DRIVER_PARAMS_USER_PROPERTY)
 
             stb_user = self.wls_helper.get_stb_user_name(rcu_prefix)
-            self.logger.fine('WLSDPLY-12222', stb_user, class_name=self.__class_name, method_name=_method_name)
+            self.logger.info('WLSDPLY-12222', stb_user, class_name=self.__class_name, method_name=_method_name)
             wlst_path = self.aliases.get_wlst_attributes_path(location)
+            print('cd(\'' + wlst_path +'\')')
             self.wlst_helper.cd(wlst_path)
             wlst_name, wlst_value = \
                 self.aliases.get_wlst_attribute_name_and_value(location, DRIVER_PARAMS_PROPERTY_VALUE, stb_user)
+            print('set(\'' + wlst_name +'\', \'' + wlst_value + '\')')
             self.wlst_helper.set_if_needed(wlst_name, wlst_value)
 
             self.logger.info('WLSDPLY-12223', class_name=self.__class_name, method_name=_method_name)
             if self.wls_helper.is_database_defaults_supported():
+                print('getDatabaseDefaults()')
                 self.wlst_helper.get_database_defaults()
 
             if self.model_context.get_update_rcu_schema_pass() is True:
@@ -1151,7 +1158,7 @@ class DomainCreator(Creator):
         self.logger.entering(class_name=self.__class_name, method_name=_method_name)
         if APP_DIR in self._domain_info:
             app_dir = self._domain_info[APP_DIR]
-            self.logger.fine('WLSDPLY-12225', model.get_model_domain_info_key(), APP_DIR, app_dir,
+            self.logger.info('WLSDPLY-12225', model.get_model_domain_info_key(), APP_DIR, app_dir,
                              class_name=self.__class_name, method_name=_method_name)
         else:
             app_parent = self.model_context.get_domain_parent_dir()
@@ -1159,7 +1166,7 @@ class DomainCreator(Creator):
                 app_parent = os.path.dirname(self.model_context.get_domain_home())
 
             app_dir = os.path.join(app_parent, 'applications')
-            self.logger.fine('WLSDPLY-12226', model.get_model_domain_info_key(), APP_DIR, app_dir,
+            self.logger.info('WLSDPLY-12226', model.get_model_domain_info_key(), APP_DIR, app_dir,
                              class_name=self.__class_name, method_name=_method_name)
 
         self.wlst_helper.set_option_if_needed(SET_OPTION_APP_DIR, app_dir)
@@ -1262,7 +1269,7 @@ class DomainCreator(Creator):
         Set the Domain attributes
         """
         _method_name = '__set_domain_attributes'
-        self.logger.finer('WLSDPLY-12231', self._domain_name, class_name=self.__class_name, method_name=_method_name)
+        self.logger.info('WLSDPLY-12231', self._domain_name, class_name=self.__class_name, method_name=_method_name)
         attrib_dict = dictionary_utils.get_dictionary_attributes(self.model.get_model_topology())
 
         # skip any attributes that have special handling
